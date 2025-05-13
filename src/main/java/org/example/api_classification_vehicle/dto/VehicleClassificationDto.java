@@ -15,4 +15,6 @@ public class VehicleClassificationDto {
     private double tarrif;
 
     private String imageBase64;
+
+    private String device;
 }

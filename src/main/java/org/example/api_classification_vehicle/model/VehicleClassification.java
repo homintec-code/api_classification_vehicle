@@ -21,9 +21,13 @@ public class VehicleClassification  extends Audit {
     private double tarrif;
 
     @Lob  // For large text data (BASE64 images can be long)
+    @Column(name = "image_base64", columnDefinition = "TEXT")
     private String imageBase64;
 
-    @Column(name = "to_treat", nullable = false, updatable = false)
+    @Column(name = "to_treat", nullable = false)
     private boolean toTreat = false;
+
+    private String device; //Exemple : Camera1, Camera2, Camera3
+
 
 }
