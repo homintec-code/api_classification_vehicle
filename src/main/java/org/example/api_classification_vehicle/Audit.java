@@ -23,11 +23,11 @@ public class Audit {
     @CreatedDate
     @Column(nullable = false, updatable = false)
     @Temporal(TemporalType.TIMESTAMP)
-    private Date createdAt;
+        private Date createdAt;
 
-    @LastModifiedDate
-    @Column(nullable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date updatedAt;
+        @LastModifiedDate
+        @Column(nullable = false)
+        @Temporal(TemporalType.TIMESTAMP)
+        private Date updatedAt;
 
 }

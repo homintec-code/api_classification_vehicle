@@ -2,6 +2,8 @@ package org.example.api_classification_vehicle.dto;
 
 import lombok.Data;
 
+import java.util.Date;
+
 @Data
 public class VehicleClassificationDto {
 
@@ -17,4 +19,11 @@ public class VehicleClassificationDto {
     private String imageBase64;
 
     private String device;
+
+    // Getter normal
+    public String getVehicleClass() {
+        return this.vehicleClass != null ? this.vehicleClass.toUpperCase() : null;
+    }
+
 }
+

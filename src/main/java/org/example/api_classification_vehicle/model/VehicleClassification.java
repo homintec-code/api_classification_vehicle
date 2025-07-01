@@ -2,7 +2,6 @@ package org.example.api_classification_vehicle.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import org.example.api_classification_vehicle.Audit;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -10,7 +9,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Table(name = "vehicle_classifications")
 @Data
 @EntityListeners(AuditingEntityListener.class) // Add this
-public class VehicleClassification  extends Audit {
+public class VehicleClassification extends Audit {
 
     private String vehicleType; // Exemple : Camion, Voiture, Bus,MINBUS etc.
 

@@ -12,4 +12,5 @@ public class ApiClassificationVehicleApplication {
 		SpringApplication.run(ApiClassificationVehicleApplication.class, args);
 	}
 
+
 }
