@@ -47,7 +47,10 @@ public class SecurityConfig {
                                 "/ws/**",
                                 "api/vehicle-classifications",
                                 "/api/reports/vehicle-classifications/**",
-                                "api/license-plate/**"
+                                "api/reports/license-plate/**",
+                                "api/license-plate/**",
+                                "license-plate/save",
+                                "api/v1/license-plate"
                                 ).permitAll()
                         .requestMatchers("/api/classifications/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()

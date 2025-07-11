@@ -5,6 +5,7 @@ import com.itextpdf.text.Font;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
+import jakarta.persistence.criteria.Predicate;
 import org.apache.tomcat.util.http.fileupload.ByteArrayOutputStream;
 import org.example.api_classification_vehicle.Audit;
 import org.example.api_classification_vehicle.model.VehicleClassification;
@@ -12,6 +13,7 @@ import org.example.api_classification_vehicle.repository.VehicleClassificationRe
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +21,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -105,20 +108,11 @@ public class VehicleClassificationReportService {
      * @return String contenant les données au format CSV
      */
     @Transactional(readOnly = true)
-    public String exportToCsv(String vehicleType,String device,int axleCount, int tarrif,LocalDateTime startDate, LocalDateTime endDate) {
+    public String exportToCsv(String vehicleType,String device,Integer axleCount, Integer tarrif,LocalDateTime startDate, LocalDateTime endDate) {
         try {
 
-            List<VehicleClassification> classifications ;
-            if (vehicleType != null || device != null || (startDate != null && endDate != null)) {
-                classifications = vehicleClassificationRepository
-                        .findByOptionalVehicle(vehicleType, device,axleCount,tarrif,startDate, endDate);
-            } else {
 
-                 classifications = vehicleClassificationRepository
-                        .findByCreatedAtBetween(startDate, endDate);
-            }
-
-
+            List<VehicleClassification> classifications  = listSearch(vehicleType,device,axleCount,tarrif,startDate,endDate);
 
             StringBuilder csvBuilder = new StringBuilder();
             // En-tête CSV
@@ -141,6 +135,84 @@ public class VehicleClassificationReportService {
         }
     }
 
+
+
+
+    private List<VehicleClassification> listSearch(String vehicleType, String device, Integer axleCount, Integer tarrif,
+                                                   LocalDateTime startDate, LocalDateTime endDate) {
+
+        if (startDate == null || endDate == null) {
+            throw new IllegalArgumentException("Start date and end date must be provided.");
+        }
+
+        List<VehicleClassification> classifications;
+
+        if (vehicleType != null && device != null && vehicleType.length() > 0 && device.length() > 0) {
+            System.out.print("vehicleType : " + vehicleType +"device :" + device +"axleCount :" + axleCount);
+
+            classifications = vehicleClassificationRepository
+                    .findByOptionalVehicleAndVehicleType(vehicleType, device, startDate, endDate);
+        } else if (axleCount != null && axleCount != 0 && tarrif != null && tarrif != 0) {
+
+            System.out.print("startDate" + startDate + "endDate" + endDate  + "device :" + device +"axleCount :" + axleCount);
+
+            classifications = vehicleClassificationRepository
+                    .findByOptionalVehicleAndAxleCountAndTarrif(axleCount, tarrif, startDate, endDate);
+        } else if (axleCount != null && axleCount != 0) {
+            System.out.print("devicehhhhhhhhhh :" + device +"axleCount :" + axleCount);
+
+            classifications = vehicleClassificationRepository
+                    .findByOptionalVehicleAndAxleCount(axleCount, startDate, endDate);
+        }
+        else if (tarrif != null && tarrif != 0 && vehicleType != null && axleCount != null && axleCount != 0 && !vehicleType.isEmpty() && device != null && !device.isEmpty()) {
+            System.out.println("startDate: " + startDate + " endDate: " + endDate + " device: " + device + " tarrif: " + tarrif);
+
+            // Assuming you are using Specification for filtering:
+            Specification<VehicleClassification> spec = byFilters(vehicleType, device, axleCount, tarrif, startDate, endDate);
+            classifications = vehicleClassificationRepository.findAll(spec);
+        }
+
+        else if (tarrif != null && tarrif != 0) {
+            System.out.print("startDate" + startDate + "endDate" + endDate  + "device :" + device +"tarrif :" + tarrif);
+
+            classifications = vehicleClassificationRepository
+                    .findByOptionalVehicleAndTarrif(tarrif, startDate, endDate);
+        } else {
+
+            System.out.print("starxxxxxxxtDate" + startDate + "endDate" + endDate  + "device :" + device +"tarrif :" + tarrif);
+
+            classifications = vehicleClassificationRepository
+                    .findByCreatedAtBetween(startDate, endDate);
+        }
+
+        return classifications;
+    }
+
+    public Specification<VehicleClassification> byFilters(String vehicleType, String device, Integer axleCount, Integer tarrif, LocalDateTime startDate, LocalDateTime endDate) {
+        return (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (vehicleType != null) {
+                predicates.add(criteriaBuilder.equal(root.get("vehicleType"), vehicleType));
+            }
+            if (device != null) {
+                predicates.add(criteriaBuilder.equal(root.get("device"), device));
+            }
+            if (axleCount != null) {
+                predicates.add(criteriaBuilder.equal(root.get("axleCount"), axleCount));
+            }
+            if (tarrif != null) {
+                predicates.add(criteriaBuilder.equal(root.get("tarrif"), tarrif));
+            }
+            if (startDate != null && endDate != null) {
+                predicates.add(criteriaBuilder.between(root.get("createdAt"), startDate, endDate));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+
     // Méthode pour échapper les caractères spéciaux CSV
 
     private String escapeCsv(String input) {
@@ -156,18 +228,9 @@ public class VehicleClassificationReportService {
      * @return String contenant les données au format JSON
      */
     @Transactional(readOnly = true)
-    public String exportToJson(String vehicleType,String device, int axleCount, int tarrif,LocalDateTime startDate, LocalDateTime endDate) {
-        List<VehicleClassification> classifications ;
-        if (vehicleType != null || device != null || (startDate != null && endDate != null)) {
-            classifications = vehicleClassificationRepository
-                    .findByOptionalVehicle(vehicleType, device,axleCount,tarrif,startDate, endDate);
-        } else {
+    public String exportToJson(String vehicleType,String device, Integer axleCount, Integer tarrif,LocalDateTime startDate, LocalDateTime endDate) {
 
-            classifications = vehicleClassificationRepository
-                    .findByCreatedAtBetween(startDate, endDate);
-        }
-
-
+        List<VehicleClassification> classifications  = listSearch(vehicleType,device,axleCount,tarrif,startDate,endDate);
         StringBuilder jsonBuilder = new StringBuilder();
         jsonBuilder.append("[\n");
 
@@ -193,194 +256,84 @@ public class VehicleClassificationReportService {
         return jsonBuilder.toString();
     }
 
-    /**
-     * Exporte les données de classification au format PDF pour une période donnée
-     * @param startDate Date de début
-     * @param endDate Date de fin
-     * @return byte[] contenant le PDF généré
-     *//*
-    @Transactional(readOnly = true)
-    public byte[] exportToPdf(LocalDateTime startDate, LocalDateTime endDate) {
-        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            // 1. Récupérer les données
-            List<VehicleClassification> classifications = vehicleClassificationRepository
-                    .findByCreatedAtBetween(startDate, endDate);
 
-            // 2. Créer le document PDF
-            Document document = new Document(PageSize.A4.rotate()); // Paysage pour plus d'espace
-            PdfWriter.getInstance(document, outputStream);
-            document.open();
-
-            // 3. Ajouter un titre
-            com.itextpdf.text.Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18);
-            Paragraph title = new Paragraph("Rapport des Classifications de Véhicules", titleFont);
-            title.setAlignment(Element.ALIGN_CENTER);
-            title.setSpacingAfter(20f);
-            document.add(title);
-
-            // 4. Ajouter les métadonnées de la période
-            Font metadataFont = FontFactory.getFont(FontFactory.HELVETICA, 12);
-            Paragraph period = new Paragraph(
-                    String.format("Période : %s au %s",
-                            startDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
-                            endDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))),
-                    metadataFont);
-            period.setSpacingAfter(15f);
-            document.add(period);
-
-            // 5. Créer un tableau pour les données
-            PdfPTable table = new PdfPTable(6); // 6 colonnes
-            table.setWidthPercentage(100);
-            table.setSpacingBefore(10f);
-
-            // En-têtes du tableau
-            Stream.of("Type", "Classe", "Nombre d'essieux", "Tarif", "Appareil", "Date de création")
-                    .forEach(header -> {
-                        PdfPCell cell = new PdfPCell(new Phrase(header));
-                        cell.setBackgroundColor(BaseColor.LIGHT_GRAY);
-                        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-                        table.addCell(cell);
-                    });
-
-            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
-            // Remplir le tableau avec les données
-            classifications.forEach(vc -> {
-                table.addCell(vc.getVehicleType());
-                table.addCell(vc.getVehicleClass());
-                table.addCell(String.valueOf(vc.getAxleCount()));
-                table.addCell(String.valueOf(vc.getTarrif()));
-                table.addCell(vc.getDevice());
-                table.addCell(sdf.format(vc.getCreatedAt()));
-            });
-
-            document.add(table);
-
-            // 6. Ajouter un pied de page
-            Paragraph footer = new Paragraph(
-                    String.format("Généré le %s - Total: %d enregistrements",
-                            LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
-                            classifications.size()),
-                    FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 10));
-            footer.setAlignment(Element.ALIGN_RIGHT);
-            footer.setSpacingBefore(20f);
-            document.add(footer);
-
-            document.close();
-            return outputStream.toByteArray();
-        } catch (DocumentException | IOException e) {
-            throw new RuntimeException("Erreur lors de la génération du PDF", e);
-        }
-    }*/
 
 
     @Transactional(readOnly = true)
-    public byte[] exportToPdf(String vehicleType,String device,int axleCount, int tarrif,LocalDateTime startDate, LocalDateTime endDate) {
+    public byte[] exportToPdf(String vehicleType, String device, Integer axleCount,
+                              Integer tarrif, LocalDateTime startDate, LocalDateTime endDate) {
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            // 1. Récupérer les données
 
+            List<VehicleClassification> classifications = listSearch(vehicleType, device, axleCount, tarrif, startDate, endDate);
 
-
-            List<VehicleClassification> classifications ;
-            if (vehicleType != null || device != null || (startDate != null && endDate != null)) {
-                classifications = vehicleClassificationRepository
-                        .findByOptionalVehicle(vehicleType, device,axleCount,tarrif, startDate, endDate);
-            } else {
-
-                classifications = vehicleClassificationRepository
-                        .findByCreatedAtBetween(startDate, endDate);
-            }
-
-
-            // 2. Créer le document PDF
             Document document = new Document(PageSize.A4.rotate());
             PdfWriter.getInstance(document, outputStream);
             document.open();
 
-            // 3. Ajouter le logo (si disponible)
-            try {
-                if (classifications != null && !classifications.isEmpty()
-                        && classifications.get(0).getImageBase64() != null) {
-                    String base64Image = classifications.get(0).getImageBase64();
-                    byte[] imageBytes = Base64.getDecoder().decode(base64Image);
-                    Image logo = Image.getInstance(imageBytes);
-
-                    // Redimensionner le logo
-                    logo.scaleToFit(100, 100); // Ajustez selon vos besoins
-
-                    // Positionner le logo
-                    logo.setAbsolutePosition(
-                            document.right() - logo.getScaledWidth() - 36,  // 36 = marge de 0.5 pouce
-                            document.top() - logo.getScaledHeight() - 36
-                    );
-                    document.add(logo);
-                }
-            } catch (Exception e) {
-                // Ne pas bloquer la génération du PDF si l'image pose problème
-                System.err.println("Erreur lors de l'ajout du logo: " + e.getMessage());
-            }
-
-            // 3. Ajouter un titre
-            com.itextpdf.text.Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18);
+            // Titre
+            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18);
             Paragraph title = new Paragraph("Rapport des Classifications de Véhicules", titleFont);
             title.setAlignment(Element.ALIGN_CENTER);
             title.setSpacingAfter(20f);
             document.add(title);
 
-            // 4. Ajouter les métadonnées de la période
-            Font metadataFont = FontFactory.getFont(FontFactory.HELVETICA, 12);
-            Paragraph period = new Paragraph(
-                    String.format("Période : %s au %s",
-                            startDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
-                            endDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))),
-                    metadataFont);
-            period.setSpacingAfter(15f);
-            document.add(period);
+            // Période
+            if (startDate != null && endDate != null) {
+                Font metadataFont = FontFactory.getFont(FontFactory.HELVETICA, 12);
+                Paragraph period = new Paragraph(
+                        String.format("Période : %s au %s",
+                                startDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
+                                endDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))),
+                        metadataFont);
+                period.setSpacingAfter(15f);
+                document.add(period);
+            }
 
-            // 5. Créer un tableau pour les données
-            PdfPTable table = new PdfPTable(7); // 6 colonnes
+            // Tableau
+            PdfPTable table = new PdfPTable(7); // 7 colonnes
             table.setWidthPercentage(100);
             table.setSpacingBefore(10f);
 
-            // En-têtes du tableau
-            Stream.of("Type", "Classe", "Nombre d'essieux", "Tarif", "Appareil", "Date de création","Images")
+            // En-têtes
+            Stream.of("Type", "Classe", "Nombre d'essieux", "Tarif", "Appareil", "Date de création", "Images")
                     .forEach(header -> {
                         PdfPCell cell = new PdfPCell(new Phrase(header));
                         cell.setBackgroundColor(BaseColor.LIGHT_GRAY);
                         cell.setHorizontalAlignment(Element.ALIGN_CENTER);
                         table.addCell(cell);
                     });
-            // ... (le reste de votre code existant: titre, période, tableau...)
 
-            // Dans la boucle d'ajout des données au tableau:
-            classifications.forEach(vc -> {
-                table.addCell(vc.getVehicleType());
-                table.addCell(vc.getVehicleClass());
-                table.addCell(String.valueOf(vc.getAxleCount()));
-                table.addCell(String.valueOf(vc.getTarrif()));
-                table.addCell(vc.getDevice());
-                table.addCell(new SimpleDateFormat("dd/MM/yyyy HH:mm").format(vc.getCreatedAt()));
+            // Contenu
+            for (VehicleClassification vc : classifications) {
+                table.addCell(vc.getVehicleType() != null ? vc.getVehicleType() : "N/A");
+                table.addCell(vc.getVehicleClass() != null ? vc.getVehicleClass() : "N/A");
+                table.addCell(vc.getAxleCount() != 0 ? String.valueOf(vc.getAxleCount()) : "N/A");
+                table.addCell(vc.getTarrif() != 0 ? String.valueOf(vc.getTarrif()) : "N/A");
+                table.addCell(vc.getDevice() != null ? vc.getDevice() : "N/A");
+                table.addCell(vc.getCreatedAt() != null ?
+                        new SimpleDateFormat("dd/MM/yyyy HH:mm").format(vc.getCreatedAt()) : "N/A");
 
-                // Option: Ajouter une miniature de l'image dans une cellule du tableau
-                if (vc.getImageBase64() != null) {
+                // Image
+                if (vc.getImageBase64() != null && !vc.getImageBase64().isEmpty()) {
                     try {
                         byte[] imgBytes = Base64.getDecoder().decode(vc.getImageBase64());
                         Image img = Image.getInstance(imgBytes);
-                        img.scaleToFit(40, 40); // Taille de la miniature
+                        img.scaleToFit(50, 50);
                         PdfPCell imageCell = new PdfPCell(img, true);
+                        imageCell.setHorizontalAlignment(Element.ALIGN_CENTER);
                         imageCell.setPadding(5);
                         table.addCell(imageCell);
                     } catch (Exception e) {
-                        table.addCell("Image non disponible");
+                        table.addCell("Erreur image");
                     }
                 } else {
                     table.addCell("Pas d'image");
                 }
-            });
+            }
 
             document.add(table);
-            // 6. Ajouter un pied de page
+
+            // Pied de page
             Paragraph footer = new Paragraph(
                     String.format("Généré le %s - Total: %d enregistrements",
                             LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
@@ -389,10 +342,49 @@ public class VehicleClassificationReportService {
             footer.setAlignment(Element.ALIGN_RIGHT);
             footer.setSpacingBefore(20f);
             document.add(footer);
+
             document.close();
             return outputStream.toByteArray();
+
         } catch (Exception e) {
             throw new RuntimeException("Erreur lors de la génération du PDF", e);
         }
     }
+
+
+    public List<VehicleClassification> findWithFilters(
+            String vehicleType, String device, Integer axleCount,
+            Integer tarrif, LocalDateTime startDate, LocalDateTime endDate) {
+
+        return vehicleClassificationRepository.findAll((root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (vehicleType != null && !vehicleType.isEmpty()) {
+                predicates.add(cb.equal(root.get("vehicleClass"), vehicleType));
+            }
+
+            if (device != null && !device.isEmpty()) {
+                predicates.add(cb.equal(root.get("device"), device));
+            }
+
+            if (axleCount != null) {
+                predicates.add(cb.equal(root.get("axleCount"), axleCount));
+            }
+
+            if (tarrif != null) {
+                predicates.add(cb.equal(root.get("tarrif"), tarrif));
+            }
+
+            if (startDate != null && endDate != null) {
+                predicates.add(cb.between(root.get("createdAt"), startDate, endDate));
+            }
+
+            if (!predicates.isEmpty()) {
+                return cb.and(predicates.toArray(new Predicate[0]));
+            }
+
+            return cb.conjunction();
+        });
+    }
+
 }

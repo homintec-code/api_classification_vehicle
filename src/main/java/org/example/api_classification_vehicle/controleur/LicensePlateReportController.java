@@ -31,13 +31,11 @@ public class LicensePlateReportController {
 
     @GetMapping(value = "/export/csv", produces = "text/csv")
     public ResponseEntity<String> exportToCsv(
-            @RequestParam(required = false) String vehicleType,
+            @RequestParam(required = false) String registrationNumber,
             @RequestParam(required = false) String device,
-            @RequestParam(required = false) int axleCount,
-            @RequestParam(required = false) int tarrif,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
-        String csv = reportService.exportToCsv(vehicleType, device,startDate, endDate);
+        String csv = reportService.exportToCsv(registrationNumber, device,startDate, endDate);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -48,14 +46,12 @@ public class LicensePlateReportController {
 
     @GetMapping("/export-pdf")
     public ResponseEntity<byte[]> exportToPdf(
-            @RequestParam(required = false) String vehicleType,
+            @RequestParam(required = false) String registrationNumber,
             @RequestParam(required = false) String device,
-            @RequestParam(required = false) int axleCount,
-            @RequestParam(required = false) int tarrif,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
 
-        byte[] pdfBytes = reportService.exportToPdf(vehicleType, device,startDate, endDate);
+        byte[] pdfBytes = reportService.exportToPdf(registrationNumber, device,startDate, endDate);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=vehicle_report.pdf")
@@ -65,13 +61,11 @@ public class LicensePlateReportController {
 
     @GetMapping(value = "/export/json", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> exportToJson(
-            @RequestParam(required = false) String vehicleType,
+            @RequestParam(required = false) String registrationNumber,
             @RequestParam(required = false) String device,
-            @RequestParam(required = false) int axleCount,
-            @RequestParam(required = false) int tarrif,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
-        String json = reportService.exportToJson(vehicleType, device,startDate, endDate);
+        String json = reportService.exportToJson(registrationNumber, device,startDate, endDate);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,

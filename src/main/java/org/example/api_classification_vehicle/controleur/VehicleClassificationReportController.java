@@ -45,10 +45,10 @@ public class VehicleClassificationReportController {
 
     @GetMapping(value = "/export/csv", produces = "text/csv")
     public ResponseEntity<String> exportToCsv(
-            @RequestParam(required = false) String vehicleType,
-            @RequestParam(required = false) String device,
-            @RequestParam(required = false) int axleCount,
-            @RequestParam(required = false) int tarrif,
+            @RequestParam(required = false,defaultValue = "") String vehicleType,
+            @RequestParam(required = false,defaultValue = "") String device,
+            @RequestParam(required = false,defaultValue = "0") Integer axleCount,
+            @RequestParam(required = false,defaultValue = "0") Integer tarrif,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
         String csv = reportService.exportToCsv(vehicleType, device,axleCount,tarrif,startDate, endDate);
@@ -62,10 +62,10 @@ public class VehicleClassificationReportController {
 
     @GetMapping("/export-pdf")
     public ResponseEntity<byte[]> exportToPdf(
-            @RequestParam(required = false) String vehicleType,
-            @RequestParam(required = false) String device,
-            @RequestParam(required = false) int axleCount,
-            @RequestParam(required = false) int tarrif,
+            @RequestParam(required = false,defaultValue = "") String vehicleType,
+            @RequestParam(required = false,defaultValue = "") String device,
+            @RequestParam(required = false,defaultValue = "0") Integer axleCount,
+            @RequestParam(required = false,defaultValue = "0") Integer tarrif,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
 
@@ -79,10 +79,10 @@ public class VehicleClassificationReportController {
 
     @GetMapping(value = "/export/json", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> exportToJson(
-            @RequestParam(required = false) String vehicleType,
-            @RequestParam(required = false) String device,
-            @RequestParam(required = false) int axleCount,
-            @RequestParam(required = false) int tarrif,
+            @RequestParam(required = false,defaultValue = "") String vehicleType,
+            @RequestParam(required = false,defaultValue = "") String device,
+            @RequestParam(required = false,defaultValue = "0") Integer axleCount,
+            @RequestParam(required = false,defaultValue = "0") Integer tarrif,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
         String json = reportService.exportToJson(vehicleType, device,axleCount,tarrif,startDate, endDate);

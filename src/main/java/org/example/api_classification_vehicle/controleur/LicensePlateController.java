@@ -64,7 +64,7 @@ public class LicensePlateController {
         Page<LicensePlate> vehiclePage;
 
         if (registrationNumber != null || device != null || startDate != null && endDate != null ) {
-            vehiclePage = licensePlateService.findByOptionalRegistrationOrDeviceOrCreatedAtBetween(startDate, endDate,registrationNumber,device, pageable);
+            vehiclePage = licensePlateService.findFilteredLicensePlates(registrationNumber,device, startDate, endDate,pageable);
         } else {
             vehiclePage = licensePlateService.findAll(pageable);
         }

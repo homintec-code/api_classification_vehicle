@@ -15,13 +15,11 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 public class LicensePlateEventListener {
-    private final LicensePlateService licensePlateService;
 
     private final WebSocketService webSocketService;
 
     @Autowired
     public LicensePlateEventListener(LicensePlateService licensePlateService, WebSocketService webSocketService) {
-        this.licensePlateService = licensePlateService;
         this.webSocketService = webSocketService;
     }
 
@@ -29,7 +27,6 @@ public class LicensePlateEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleValidationCreatedEvent(LicensePlateCreatedEvent event) {
-        //Validation validation = validationsService.findWithAssociationsById(event.getValidationId())
         LicensePlate licensePlate = (LicensePlate) event.getSource();
         // Traitez l'événement ici
         webSocketService.sendLicensePlateDetails(licensePlate);

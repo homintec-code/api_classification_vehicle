@@ -4,6 +4,7 @@ import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
+import jakarta.persistence.criteria.Predicate;
 import org.apache.tomcat.util.http.fileupload.ByteArrayOutputStream;
 import org.example.api_classification_vehicle.model.LicensePlate;
 import org.example.api_classification_vehicle.model.VehicleClassification;
@@ -12,12 +13,14 @@ import org.example.api_classification_vehicle.repository.VehicleClassificationRe
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -45,18 +48,10 @@ public class LicensePlateReportService {
     public String exportToCsv(String registrationNumber,String device,LocalDateTime startDate, LocalDateTime endDate) {
         try {
 
-            List<LicensePlate> licensePlates;
-            if (registrationNumber != null || device != null || (startDate != null && endDate != null)) {
-                licensePlates = licensePlateRepository
-                        .findByOptionalRegistrationOptionalOrDeviceOrCreatedAtBetween(registrationNumber, device,startDate, endDate);
-            } else {
-
-                licensePlates = licensePlateRepository
-                        .findByCreatedAtBetween(startDate, endDate);
-            }
 
 
-
+            Specification<LicensePlate> spec = findWithFilters(registrationNumber, device, startDate, endDate);
+            List<LicensePlate> licensePlates = licensePlateRepository.findAll(spec);
             StringBuilder csvBuilder = new StringBuilder();
             // En-tête CSV
             csvBuilder.append("immatriculation,Voie,Date de création\n");
@@ -93,15 +88,9 @@ public class LicensePlateReportService {
     public String exportToJson(String registrationNumber,String device,LocalDateTime startDate, LocalDateTime endDate) {
 
 
-        // 1. Récupérer les données
-        List<LicensePlate> licensePlates;
-        if (registrationNumber != null || device != null || (startDate != null && endDate != null)) {
-            licensePlates = licensePlateRepository
-                    .findByOptionalRegistrationOptionalOrDeviceOrCreatedAtBetween(registrationNumber, device, startDate, endDate);
-        } else {
-            licensePlates = licensePlateRepository.findByCreatedAtBetween(startDate, endDate);
-        }
 
+        Specification<LicensePlate> spec = findWithFilters(registrationNumber, device, startDate, endDate);
+        List<LicensePlate> licensePlates = licensePlateRepository.findAll(spec);
 
 
         StringBuilder jsonBuilder = new StringBuilder();
@@ -128,58 +117,26 @@ public class LicensePlateReportService {
     }
 
 
-
     @Transactional(readOnly = true)
     public byte[] exportToPdf(String registrationNumber, String device, LocalDateTime startDate, LocalDateTime endDate) {
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
 
-            // 1. Récupérer les données
-            List<LicensePlate> licensePlates;
-            if (registrationNumber != null || device != null || (startDate != null && endDate != null)) {
-                licensePlates = licensePlateRepository
-                        .findByOptionalRegistrationOptionalOrDeviceOrCreatedAtBetween(registrationNumber, device, startDate, endDate);
-            } else {
-                licensePlates = licensePlateRepository.findByCreatedAtBetween(startDate, endDate);
-            }
 
-            // 2. Créer le document PDF
+
+            Specification<LicensePlate> spec = findWithFilters(registrationNumber, device, startDate, endDate);
+            List<LicensePlate> licensePlates = licensePlateRepository.findAll(spec);
             Document document = new Document(PageSize.A4.rotate());
             PdfWriter.getInstance(document, outputStream);
             document.open();
 
-            // 3. Ajouter les images d’en-tête (si disponibles)
-            try {
-                if (!licensePlates.isEmpty()) {
-                    LicensePlate lp = licensePlates.get(0);
-
-                    if (lp.getImagePlate64() != null) {
-                        byte[] imageBytesPlaque = Base64.getDecoder().decode(lp.getImagePlate64());
-                        Image logo = Image.getInstance(imageBytesPlaque);
-                        logo.scaleToFit(100, 100);
-                        logo.setAbsolutePosition(document.right() - logo.getScaledWidth() - 36, document.top() - logo.getScaledHeight() - 36);
-                        document.add(logo);
-                    }
-
-                    if (lp.getImageVehicleBase64() != null) {
-                        byte[] imageBytesVehicle = Base64.getDecoder().decode(lp.getImageVehicleBase64());
-                        Image vehicleImage = Image.getInstance(imageBytesVehicle);
-                        vehicleImage.scaleToFit(150, 150);
-                        vehicleImage.setAbsolutePosition(36, document.top() - vehicleImage.getScaledHeight() - 36);
-                        document.add(vehicleImage);
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println("Erreur lors de l'ajout des images : " + e.getMessage());
-            }
-
-            // 4. Titre
+            // Titre
             Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18);
-            Paragraph title = new Paragraph("Rapport des immatriculations des Véhicules", titleFont);
+            Paragraph title = new Paragraph("Rapport des plaques immatriculations de Véhicules", titleFont);
             title.setAlignment(Element.ALIGN_CENTER);
             title.setSpacingAfter(20f);
             document.add(title);
 
-            // 5. Période
+            // Période
             if (startDate != null && endDate != null) {
                 Font metadataFont = FontFactory.getFont(FontFactory.HELVETICA, 12);
                 Paragraph period = new Paragraph(
@@ -191,13 +148,13 @@ public class LicensePlateReportService {
                 document.add(period);
             }
 
-            // 6. Créer tableau
-            PdfPTable table = new PdfPTable(6); // 6 colonnes
+            // Tableau
+            PdfPTable table = new PdfPTable(4); // 7 colonnes
             table.setWidthPercentage(100);
             table.setSpacingBefore(10f);
 
             // En-têtes
-            Stream.of("Immatriculation", "Classe véhicule", "Caméra", "Date de création", "Image Plaque", "Image Véhicule")
+            Stream.of("Immatriculation", "Voie", "Date de création", "Image Plaque")
                     .forEach(header -> {
                         PdfPCell cell = new PdfPCell(new Phrase(header));
                         cell.setBackgroundColor(BaseColor.LIGHT_GRAY);
@@ -206,17 +163,16 @@ public class LicensePlateReportService {
                     });
 
             // Contenu
-            for (LicensePlate lp : licensePlates) {
-                table.addCell(lp.getRegistration_number() != null ? lp.getRegistration_number() : "N/A");
-                table.addCell(lp.getDevice() != null ? lp.getDevice() : "N/A");
-                table.addCell(lp.getCreatedAt() != null
-                        ? new SimpleDateFormat("dd/MM/yyyy HH:mm").format(lp.getCreatedAt())
-                        : "N/A");
+            for (LicensePlate vc : licensePlates) {
+                table.addCell(vc.getRegistration_number() != null ? vc.getRegistration_number() : "N/A");
+                table.addCell(vc.getDevice() != null ? vc.getDevice() : "N/A");
+                table.addCell(vc.getCreatedAt() != null ?
+                        new SimpleDateFormat("dd/MM/yyyy HH:mm").format(vc.getCreatedAt()) : "N/A");
 
-                // Image plaque
-                if (lp.getImagePlate64() != null) {
+                // Image
+                if (vc.getImagePlate64() != null && !vc.getImagePlate64().isEmpty()) {
                     try {
-                        byte[] imgBytes = Base64.getDecoder().decode(lp.getImagePlate64());
+                        byte[] imgBytes = Base64.getDecoder().decode(vc.getImagePlate64());
                         Image img = Image.getInstance(imgBytes);
                         img.scaleToFit(50, 50);
                         PdfPCell imageCell = new PdfPCell(img, true);
@@ -224,39 +180,21 @@ public class LicensePlateReportService {
                         imageCell.setPadding(5);
                         table.addCell(imageCell);
                     } catch (Exception e) {
-                        table.addCell("Pas d'image");
+                        table.addCell("Erreur image");
                     }
                 } else {
-                    table.addCell("N/A");
-                }
-
-                // Image véhicule
-                if (lp.getImageVehicleBase64() != null) {
-                    try {
-                        byte[] imgBytes = Base64.getDecoder().decode(lp.getImageVehicleBase64());
-                        Image img = Image.getInstance(imgBytes);
-                        img.scaleToFit(50, 50);
-                        PdfPCell imageCell = new PdfPCell(img, true);
-                        imageCell.setHorizontalAlignment(Element.ALIGN_CENTER);
-                        imageCell.setPadding(5);
-                        table.addCell(imageCell);
-                    } catch (Exception e) {
-                        table.addCell("Pas d'image");
-                    }
-                } else {
-                    table.addCell("N/A");
+                    table.addCell("Pas d'image");
                 }
             }
 
             document.add(table);
 
-            // 7. Pied de page
+            // Pied de page
             Paragraph footer = new Paragraph(
-                    String.format("Généré le %s - Total : %d enregistrements",
+                    String.format("Généré le %s - Total: %d enregistrements",
                             LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
                             licensePlates.size()),
-                    FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 10)
-            );
+                    FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 10));
             footer.setAlignment(Element.ALIGN_RIGHT);
             footer.setSpacingBefore(20f);
             document.add(footer);
@@ -268,5 +206,30 @@ public class LicensePlateReportService {
             throw new RuntimeException("Erreur lors de la génération du PDF", e);
         }
     }
+
+
+    public static Specification<LicensePlate> findWithFilters(
+            String registrationNumber, String device,
+            LocalDateTime startDate, LocalDateTime endDate) {
+
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (registrationNumber != null && !registrationNumber.isEmpty()) {
+                predicates.add(cb.equal(root.get("registration_number"), registrationNumber));
+            }
+
+            if (device != null && !device.isEmpty()) {
+                predicates.add(cb.equal(root.get("device"), device));
+            }
+
+            if (startDate != null && endDate != null) {
+                predicates.add(cb.between(root.get("createdAt"), startDate, endDate));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
 
 }

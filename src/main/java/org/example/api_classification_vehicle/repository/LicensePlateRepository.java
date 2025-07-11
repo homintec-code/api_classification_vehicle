@@ -1,9 +1,11 @@
 package org.example.api_classification_vehicle.repository;
 
 import org.example.api_classification_vehicle.model.LicensePlate;
+import org.example.api_classification_vehicle.model.VehicleClassification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -14,7 +16,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface LicensePlateRepository extends JpaRepository<LicensePlate, UUID> {
+public interface LicensePlateRepository extends JpaRepository<LicensePlate, UUID>, JpaSpecificationExecutor<LicensePlate> {
     // custom query methods if needed
 
 
@@ -66,7 +68,7 @@ public interface LicensePlateRepository extends JpaRepository<LicensePlate, UUID
 
 
     // Repository
-    @Query("SELECT v FROM VehicleClassification v ORDER BY v.createdAt DESC LIMIT 1")
+    @Query("SELECT v FROM LicensePlate v ORDER BY v.createdAt DESC LIMIT 1")
     Optional<LicensePlate> findLastVehicle();
 
 

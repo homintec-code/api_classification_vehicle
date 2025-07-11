@@ -1,10 +1,12 @@
 package org.example.api_classification_vehicle.service;
 
 
+import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
 import org.example.api_classification_vehicle.dto.*;
 import org.example.api_classification_vehicle.events.LicensePlateCreatedEvent;
 import org.example.api_classification_vehicle.model.LicensePlate;
+import org.example.api_classification_vehicle.model.VehicleClassification;
 import org.example.api_classification_vehicle.repository.LicensePlateRepository;
 import org.example.api_classification_vehicle.utils.ImageResizer;
 import org.example.api_classification_vehicle.utils.ResourceNotFoundException;
@@ -17,6 +19,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.text.Normalizer;
@@ -44,16 +47,13 @@ public class LicensePlateService {
     public LicensePlate save(LicensePlateDto licensePlateDto) {
 
         LicensePlate licensePlate = new LicensePlate();
-        licensePlate.setRegistration_number(licensePlate.getRegistration_number());
+        licensePlate.setRegistration_number(licensePlateDto.getRegistration_number());
         licensePlate.setImagePlate64(licensePlateDto.getImagePlate64());
         licensePlate.setImageVehicleBase64(licensePlateDto.getImageVehicleBase64());
-        licensePlate.setRegistration_number(licensePlate.getRegistration_number());
-        licensePlate.setDevice(licensePlate.getDevice());
+        licensePlate.setDevice(licensePlateDto.getDevice());
         LicensePlate saved = licensePlateRepository.save(licensePlate);
         // Envoi de la notification via WebSocket
-
         applicationEventPublisher.publishEvent(new LicensePlateCreatedEvent(saved));
-
         return saved;
     }
 
@@ -211,4 +211,84 @@ public class LicensePlateService {
         return restTemplate.getForObject(url, String.class);
     }
 
+
+    public Page<LicensePlate> findWithFilters(
+            String registrationNumber, String device,LocalDateTime startDate, LocalDateTime endDate,
+            Pageable pageable) {
+        return licensePlateRepository.findAll((root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (registrationNumber != null) {
+                predicates.add(cb.equal(root.get("registration_number"), registrationNumber));
+                if (startDate != null && endDate != null) {
+                    predicates.add(cb.between(root.get("createdAt"), startDate, endDate));
+                }
+
+            }
+
+            if (startDate != null && endDate != null ) {
+                predicates.add(cb.between(root.get("createdAt"), startDate, endDate));
+
+            }
+
+            if (device != null) {
+                predicates.add(cb.equal(root.get("device"), device));
+                // Recherche par device (toujours active si fourni)
+                // Recherche par date SEULEMENT si device est fourni
+                if (startDate != null && endDate != null) {
+                    predicates.add(cb.between(root.get("createdAt"), startDate, endDate));
+                }
+
+            }
+
+
+
+            return cb.or(predicates.toArray(new Predicate[0]));
+        }, pageable);
+    }
+
+    public Page<LicensePlate> findFilteredLicensePlates(
+            String registrationNumber,
+            String device,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            Pageable pageable) {
+
+        return licensePlateRepository.findAll((root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // Filtre par numéro d'immatriculation (si fourni)
+            if (StringUtils.hasText(registrationNumber)) {
+                predicates.add(cb.equal(
+                        cb.lower(root.get("registration_number")),
+                        registrationNumber.toLowerCase()
+                ));
+            }
+
+            // Filtre par device (si fourni)
+            if (StringUtils.hasText(device)) {
+                predicates.add(cb.equal(
+                        cb.lower(root.get("device")),
+                        device.toLowerCase()
+                ));
+
+                // Filtre par date SEULEMENT si device est fourni
+                if (startDate != null && endDate != null) {
+                    predicates.add(cb.between(
+                            root.get("createdAt"),
+                            startDate,
+                            endDate
+                    ));
+                }
+            }
+
+            // Si aucun critère n'est fourni, retourner tous les résultats
+            if (predicates.isEmpty()) {
+                return cb.conjunction();
+            }
+
+            // Combiner les prédicats avec AND
+            return cb.and(predicates.toArray(new Predicate[0]));
+        }, pageable);
+    }
 }

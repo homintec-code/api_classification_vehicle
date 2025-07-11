@@ -13,13 +13,11 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 public class ClassificationVehicleEventListener {
-    private final VehicleClassificationService vehicleClassificationService;
 
     private final WebSocketService webSocketService;
 
     @Autowired
     public ClassificationVehicleEventListener(VehicleClassificationService vehicleClassificationService, WebSocketService webSocketService) {
-        this.vehicleClassificationService = vehicleClassificationService;
         this.webSocketService = webSocketService;
     }
 

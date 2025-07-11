@@ -1,8 +1,8 @@
 package org.example.api_classification_vehicle.service;
 
 
+import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
-import org.example.api_classification_vehicle.Audit;
 import org.example.api_classification_vehicle.dto.VehicleClassificationDataDto;
 import org.example.api_classification_vehicle.dto.VehicleClassificationDto;
 import org.example.api_classification_vehicle.dto.VehicleStatsDto;
@@ -14,13 +14,12 @@ import org.example.api_classification_vehicle.utils.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Pageable;
-
 import java.text.Normalizer;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,6 +69,20 @@ public class VehicleClassificationService {
         return (Page<VehicleClassification>) vehicleClassificationRepository.findAll(pageable);
     }
 
+
+    public Page<VehicleClassification> filterWithSpecifications(
+            String vehicleType, String device, Integer axleCount, Integer tarrif,
+            LocalDateTime startDate, LocalDateTime endDate, int pageNumber, int pageSize) {
+
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+
+        // Créer la spécification de filtrage dynamique
+        Specification<VehicleClassification> spec = findWithFilters(
+                vehicleType, device, axleCount, tarrif, startDate, endDate);
+
+        // Utiliser la spécification pour récupérer les résultats paginés
+        return vehicleClassificationRepository.findAll(spec, pageable);
+    }
     // Or if you specifically need List:
     public List<VehicleClassification> findAllAsList(Pageable pageable) {
         return (List<VehicleClassification>) vehicleClassificationRepository.findAll(pageable).getContent();
@@ -208,9 +221,53 @@ public class VehicleClassificationService {
 
 
     public Page<VehicleClassification> findByOptionalVehicleTypeOrDeviceOrCreatedAtBetween(String vehicleType,String device,  int axleCount,int tarrif, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
-        return vehicleClassificationRepository.findByOptionalVehicleTypeOrDeviceOrCreatedAtBetween(vehicleType,device, axleCount,tarrif,  startDate, endDate, pageable);
+
+        return vehicleClassificationRepository.findByOptionalFilters(vehicleType,device, axleCount,tarrif,  startDate, endDate, pageable);
     }
 
 
+    public Page<VehicleClassification> filterAll(String vehicleType, Integer axleCount, Double tarrif, String device,
+                                                 LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
+        return vehicleClassificationRepository.filterAll(vehicleType, axleCount, tarrif, device, startDate, endDate, pageable);
+    }
 
+    public static Specification<VehicleClassification> findWithFilters(
+            String vehicleType, String device, Integer axleCount, Integer tarrif,
+            LocalDateTime startDate, LocalDateTime endDate) {
+
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // Filtrer par vehicleType
+            if (vehicleType != null && !vehicleType.isEmpty()) {
+                predicates.add(cb.equal(root.get("vehicleClass"), vehicleType));
+            }
+
+            // Filtrer par device
+            if (device != null && !device.isEmpty()) {
+                predicates.add(cb.equal(root.get("device"), device));
+            }
+
+            // Filtrer par axleCount
+            if (axleCount != null && axleCount != 0) {
+                predicates.add(cb.equal(root.get("axleCount"), axleCount));
+            }
+
+            // Filtrer par tarrif
+            if (tarrif != null && tarrif != 0) {
+                predicates.add(cb.equal(root.get("tarrif"), tarrif));
+            }
+
+            // Filtrer par date range (startDate à endDate)
+            if (startDate != null && endDate != null) {
+                predicates.add(cb.between(root.get("createdAt"), startDate, endDate));
+            }
+
+            // Appliquer les filtres
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+    public List<String> getDistinctVehicleClasses() {
+        return vehicleClassificationRepository.findDistinctVehicleClasses();
+    }
 }

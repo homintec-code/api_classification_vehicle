@@ -18,9 +18,11 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
     private final ClassificationVehicleWebSocketHandler classificationVehicleWebSocketHandler;
+    private final LicensePlateWebSocketHandler licensePlateWebSocketHandler;
 
-    public WebSocketConfig(ClassificationVehicleWebSocketHandler classificationVehicleWebSocketHandler) {
+    public WebSocketConfig(ClassificationVehicleWebSocketHandler classificationVehicleWebSocketHandler, LicensePlateWebSocketHandler licensePlateWebSocketHandler) {
         this.classificationVehicleWebSocketHandler = classificationVehicleWebSocketHandler;
+        this.licensePlateWebSocketHandler = licensePlateWebSocketHandler;
     }
 
 
@@ -35,8 +37,13 @@ public class WebSocketConfig implements WebSocketConfigurer {
                 .setAllowedOrigins("*")
                 .setHandshakeHandler(new DefaultHandshakeHandler(
                         new TomcatRequestUpgradeStrategy()))
-                .addInterceptors(new HttpSessionHandshakeInterceptor())
-        ; // Allow all origins
+                .addInterceptors(new HttpSessionHandshakeInterceptor()); // Allow all origins
+
+        registry.addHandler(licensePlateWebSocketHandler, "/api/v1/license-plate")
+                .setAllowedOrigins("*")
+                .setHandshakeHandler(new DefaultHandshakeHandler(
+                        new TomcatRequestUpgradeStrategy()))
+                .addInterceptors(new HttpSessionHandshakeInterceptor());
 
         registry.addHandler(serverStatusHandler(), "/ws-status")
                 .setAllowedOrigins("*");

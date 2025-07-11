@@ -13,6 +13,7 @@ import org.example.api_classification_vehicle.service.VehicleClassificationServi
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -48,14 +49,13 @@ public class VehicleClassificationController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sort,
             @RequestParam(defaultValue = "asc") String direction,
-            @RequestParam(required = false) String vehicleType,
-            @RequestParam(required = false) String device,
-            @RequestParam(required = false) int axleCount,
-            @RequestParam(required = false) int tarrif,
+            @RequestParam(required = false,defaultValue = "") String vehicleType,
+            @RequestParam(required = false,defaultValue = "") String device,
+            @RequestParam(required = false,defaultValue = "0") Integer axleCount,
+            @RequestParam(required = false,defaultValue = "0") Integer tarrif,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
 
-        // Convertir le numéro de page (1-based) en index (0-based)
         int pageNumber = page <= 0 ? 0 : page - 1;
 
         Sort.Direction sortDirection = direction.equalsIgnoreCase("desc")
@@ -66,9 +66,18 @@ public class VehicleClassificationController {
 
         Page<VehicleClassification> vehiclePage;
 
-        // Si au moins un critère est présent, on fait une recherche filtrée
-        if (vehicleType != null || device != null || (startDate != null && endDate != null)) {
-            vehiclePage = vehicleClassificationService.findByOptionalVehicleTypeOrDeviceOrCreatedAtBetween(vehicleType, device,axleCount,tarrif, startDate, endDate, pageable);
+        // Vérifier si des filtres sont utilisés
+        boolean hasFilters =
+                isNotBlank(vehicleType) ||
+                        isNotBlank(device) ||
+                        isNotNull(axleCount) ||
+                        isNotNull(tarrif);
+
+        // Appliquer les filtres si présents
+        if (hasFilters) {
+
+            vehiclePage = vehicleClassificationService.filterWithSpecifications(
+                    vehicleType, device, axleCount, tarrif, startDate, endDate, pageNumber, size);
         } else {
             vehiclePage = vehicleClassificationService.findAll(pageable);
         }
@@ -76,6 +85,15 @@ public class VehicleClassificationController {
         PageResponse<VehicleClassification> response = new PageResponse<>(vehiclePage);
         return ResponseEntity.ok(response);
     }
+
+    private boolean isNotBlank(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private boolean isNotNull(Integer value) {
+        return value != null;
+    }
+
 
 
     @GetMapping("last")
@@ -138,6 +156,12 @@ public class VehicleClassificationController {
     @GetMapping("/vehicles-by-category")
     public List<VehicleStatsDto> getVehicleCountByCategory() {
         return vehicleClassificationService.getVehicleStatsByCategory();
+    }
+
+
+    @GetMapping("/distinct-vehicle-classes")
+    public ResponseEntity<List<String>> getDistinctVehicleClasses() {
+        return ResponseEntity.ok(vehicleClassificationService.getDistinctVehicleClasses());
     }
 }
 
