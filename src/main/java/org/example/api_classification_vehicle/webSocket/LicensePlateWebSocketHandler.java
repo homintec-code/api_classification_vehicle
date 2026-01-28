@@ -14,16 +14,13 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class LicensePlateWebSocketHandler extends TextWebSocketHandler  {
 
-
-
     private final Map<String, WebSocketSession> connectedClients = new ConcurrentHashMap<>();
-    private final WebSocketService webSocketService;
+    private final SocketLicensePlateService socketLicensePlateService;
 
-
-
-    public LicensePlateWebSocketHandler(WebSocketService webSocketService) {
-        this.webSocketService = webSocketService;
+    public LicensePlateWebSocketHandler(SocketLicensePlateService socketLicensePlateService) {
+        this.socketLicensePlateService = socketLicensePlateService;
     }
+
 
     // Handle new WebSocket connection
     @Override
@@ -32,7 +29,7 @@ public class LicensePlateWebSocketHandler extends TextWebSocketHandler  {
         String clientId = session.getId();
         String uniqueClientId = clientIp + "-" + clientId;
         // connectedClients.put(uniqueClientId, session);
-        webSocketService.addClient(session, uniqueClientId);
+        socketLicensePlateService.addClient(session, uniqueClientId);
         System.out.println("Client connected Plate: " + uniqueClientId);
     }
 
@@ -43,42 +40,8 @@ public class LicensePlateWebSocketHandler extends TextWebSocketHandler  {
         String clientId = session.getId();
         String uniqueClientId = clientIp + "-" + clientId;
         //connectedClients.remove(uniqueClientId);
-        webSocketService.removeClient(uniqueClientId);
+        socketLicensePlateService.removeClient(uniqueClientId);
 
         System.out.println("Client disconnected: " + uniqueClientId);
     }
-
-
-    // Handle incoming WebSocket messages
-    @Override
-    public void handleTextMessage(WebSocketSession session, TextMessage message) throws IOException {
-        // Parse the incoming message to extract necessary fields (type, siteId, voieId)
-        String messagePayload = message.getPayload();
-        ObjectMapper objectMapper = new ObjectMapper();
-
-        try {
-            // Call the synchronous version of eventValidationWithLoginPercepteurSave
-            session.sendMessage(new TextMessage(message.asBytes()));
-
-        } catch (Exception e) {
-            // Handle any errors that occur during processing
-            e.printStackTrace();
-            session.sendMessage(new TextMessage("Error processing the request"));
-        }
-    }
-
-    // Méthode pour diffuser un message à tous les clients connectés
-    public void broadcastMessage(String message) {
-        for (WebSocketSession session : connectedClients.values()) {
-            try {
-                if (session.isOpen()) {
-                    session.sendMessage(new TextMessage(message));
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-
 }

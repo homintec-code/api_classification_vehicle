@@ -178,7 +178,9 @@ public class LicensePlateService {
 
     @Transactional
     public List<LicensePlate> markAllAsTreatedAndReturnAll(String device) {
-        List<LicensePlate> LicensePlates = licensePlateRepository.findFirstByToTreatIsFalseAndDevice(device);
+        List<LicensePlate> LicensePlates = licensePlateRepository.findAllByToTreatFalseAndDevice(device);
+
+        System.out.print("LicensePlates " + LicensePlates);
         LicensePlates.forEach(v -> v.setToTreat(true)); // Assuming false means "treated"
         return licensePlateRepository.saveAll(LicensePlates);
     }

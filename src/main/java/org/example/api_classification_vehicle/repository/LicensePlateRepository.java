@@ -75,9 +75,10 @@ public interface LicensePlateRepository extends JpaRepository<LicensePlate, UUID
     Optional<LicensePlate> findFirstByToTreatIsFalseAndDeviceOrderByCreatedAtAsc(String device);
 
 
+    @Query("SELECT lp FROM LicensePlate lp WHERE lp.toTreat = false AND lp.device = :device")
+    List<LicensePlate> findAllByToTreatFalseAndDevice(@Param("device") String device);
 
 
-    List<LicensePlate> findFirstByToTreatIsFalseAndDevice(String device);
 
     List<LicensePlate> findByDevice(String device);
 

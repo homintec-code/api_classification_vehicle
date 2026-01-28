@@ -1,9 +1,7 @@
 package org.example.api_classification_vehicle.webSocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.example.api_classification_vehicle.Audit;
 import org.example.api_classification_vehicle.model.LicensePlate;
-import org.example.api_classification_vehicle.model.VehicleClassification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -13,7 +11,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-public class WebSocketService {
+public class SocketLicensePlateService {
 
 
     private final Map<String, WebSocketSession> connectedClients = new ConcurrentHashMap<>();
@@ -39,15 +37,18 @@ public class WebSocketService {
         connectedClients.remove(uniqueClientId);
     }
 
-
-    public void sendClassificationDetails(VehicleClassification classification) {
+        public void sendLicensePlateDetails(LicensePlate licensePlate) {
         try {
-            String json = objectMapper.writeValueAsString(classification);
+            String json = objectMapper.writeValueAsString(licensePlate);
             broadcastMessage(json);
         } catch (Exception e) {
-            System.err.println("Error serializing classification: " + e.getMessage());
+            System.err.println("Error serializing license plate: " + e.getMessage());
         }
-    }
+}
+
+
+
+
 
 }
 

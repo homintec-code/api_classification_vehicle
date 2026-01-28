@@ -47,38 +47,4 @@ public class ClassificationVehicleWebSocketHandler  extends TextWebSocketHandler
 
         System.out.println("Client disconnected: " + uniqueClientId);
     }
-
-
-    // Handle incoming WebSocket messages
-    @Override
-    public void handleTextMessage(WebSocketSession session, TextMessage message) throws IOException {
-        // Parse the incoming message to extract necessary fields (type, siteId, voieId)
-        String messagePayload = message.getPayload();
-        ObjectMapper objectMapper = new ObjectMapper();
-
-        try {
-            // Call the synchronous version of eventValidationWithLoginPercepteurSave
-            session.sendMessage(new TextMessage(message.asBytes()));
-
-        } catch (Exception e) {
-            // Handle any errors that occur during processing
-            e.printStackTrace();
-            session.sendMessage(new TextMessage("Error processing the request"));
-        }
-    }
-
-    // Méthode pour diffuser un message à tous les clients connectés
-    public void broadcastMessage(String message) {
-        for (WebSocketSession session : connectedClients.values()) {
-            try {
-                if (session.isOpen()) {
-                    session.sendMessage(new TextMessage(message));
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-
 }
