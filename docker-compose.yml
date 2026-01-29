@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16
+    container_name: api_classification_vehicle_db
+    environment:
+      POSTGRES_DB: classification_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api_classification_vehicle_api
+    depends_on:
+      - db
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: classification_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      SERVER_PORT: 8085
+
+volumes:
+  pgdata:
